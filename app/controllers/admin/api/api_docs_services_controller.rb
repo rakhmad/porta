@@ -28,8 +28,7 @@ class Admin::Api::ApiDocsServicesController < Admin::Api::BaseController
   ##~ op.parameters.add @parameter_access_token
   #
   def index
-    @api_docs_services = current_account.api_docs_services.all
-    respond_with(@api_docs_services)
+    respond_with(api_docs)
   end
 
   # swagger
@@ -56,7 +55,7 @@ class Admin::Api::ApiDocsServicesController < Admin::Api::BaseController
   ##~ op.parameters.add :name => "skip_swagger_validations", :description => "Set to 'true' to skip validation of the Swagger specification, or 'false' to validate the spec. The default value is 'false'", :dataType => "boolean", :paramType => "query"
   #
   def create
-    @api_docs_service = current_account.api_docs_services.create(api_docs_params(:system_name), without_protection: true)
+    @api_docs_service = api_docs.create(api_docs_params(:system_name), without_protection: true)
     respond_with(@api_docs_service)
   end
 
@@ -108,13 +107,21 @@ class Admin::Api::ApiDocsServicesController < Admin::Api::BaseController
 
   protected
 
+  def api_docs
+    current_account.api_docs.owned_by_service
+  end
+
   def api_docs_params(*extra_params)
     permit_params = %i[name body description published skip_swagger_validations service_id] + extra_params
-    params.require(:api_docs_service).permit(*permit_params)
+    permitted_params = params.require(:api_docs_service).permit(*permit_params)
+
+    service_id = permitted_params.delete(:service_id)
+    permitted_params[:owner_id] = service_id if service_id.present?
+
+    permitted_params
   end
 
   def find_api_docs_service
-    @api_docs_service = current_account.api_docs_services.find(params[:id])
+    @api_docs_service = api_docs.find(params[:id])
   end
-
 end

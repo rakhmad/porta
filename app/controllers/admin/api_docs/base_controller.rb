@@ -4,8 +4,6 @@ class Admin::ApiDocs::BaseController < FrontendController
   before_action :find_api_docs, only: %i[destroy edit update show preview toggle_visible]
   before_action :deny_on_premises_for_master
 
-
-
   def preview
     if api_docs_service.specification.swagger?
       respond_to do |format|
@@ -44,7 +42,7 @@ class Admin::ApiDocs::BaseController < FrontendController
   end
 
   def new
-    @api_docs_service = current_scope.api_docs_services.new
+    @api_docs_service = current_scope.api_docs.new
   end
 
   def edit; end
@@ -63,11 +61,11 @@ class Admin::ApiDocs::BaseController < FrontendController
   end
 
   def index
-    @api_docs_services = current_scope.api_docs_services.page(params[:page]).includes(:service)
+    @api_docs_services = current_scope.api_docs.page(params[:page]).includes(:service)
   end
 
   def create
-    @api_docs_service = current_scope.api_docs_services.new(api_docs_params(:system_name), without_protection: true)
+    @api_docs_service = current_scope.api_docs.new(api_docs_params(:system_name), without_protection: true)
     if @api_docs_service.save
       redirect_to(preview_admin_api_docs_service_path(@api_docs_service), notice: 'ActiveDocs Spec was successfully saved.')
     else
@@ -90,11 +88,15 @@ class Admin::ApiDocs::BaseController < FrontendController
 
   def api_docs_params(*extra_params)
     permit_params = %i[name body description published skip_swagger_validations service_id] + extra_params
+
+    service_id = permitted_params.delete(:service_id)
+    permitted_params[:owner_id] = service_id if service_id.present?
+
     params.require(:api_docs_service).permit(*permit_params)
   end
 
   def find_api_docs
-    @api_docs_service = current_scope.api_docs_services.find_by_id_or_system_name!(params[:id])
+    @api_docs_service = current_scope.api_docs.find_by_id_or_system_name!(params[:id])
   end
 
   def swagger_spec
